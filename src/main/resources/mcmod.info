@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "blockrandomizer",
+    "name": "Block Randomizer",
+    "description": "A mod for randomizing blocks.",
+    "version": "1.0.0",
+    "mcversion": "1.12.2",
+    "credits": "Made by You",
+    "authorList": ["YourName"],
+    "url": "https://example.com",
+    "updateUrl": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }@
+]
