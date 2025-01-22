@@ -6,6 +6,8 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -13,6 +15,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.lwjgl.input.Keyboard;
@@ -77,7 +80,7 @@ public class BlockRandomizer {
             }
         }
     }
-
+/*
     @SubscribeEvent
     public void onBlockPlace(PlayerInteractEvent.RightClickBlock event) {
         EntityPlayer player = event.getEntityPlayer();
@@ -108,8 +111,31 @@ public class BlockRandomizer {
             player.sendMessage(new TextComponentString("No placeable slots found."));
         }
     }
+*/
+    @SubscribeEvent
+    public void onBlockPlace(MouseEvent event) {
 
-    private List<Integer> getPlaceableSlots(EntityPlayer player) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (randomizerEnabled && mc.player != null && event.getButton() == 1 && !event.isButtonstate()) {
+            EntityPlayer player = mc.player;
+            RayTraceResult result = mc.objectMouseOver;
+
+            if (result != null && result.typeOfHit == RayTraceResult.Type.BLOCK) {
+                List<Integer> placeableSlots = getPlaceableSlots(player);
+                if (!placeableSlots.isEmpty()) {
+                    int randomSlot = placeableSlots.get(random.nextInt(placeableSlots.size()));
+                    player.inventory.currentItem = randomSlot;
+
+                    // Notify the player about the selected random slot
+                    player.sendMessage(new TextComponentString("Random slot selected: " + randomSlot));
+
+                    // Simulate keypress for the random slot
+                    simulateKeyPress(randomSlot);
+            }
+        }
+    }}
+
+    public List<Integer> getPlaceableSlots(EntityPlayer player) {
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < 9; i++) {
             ItemStack stack = player.inventory.getStackInSlot(i);
@@ -149,3 +175,4 @@ public class BlockRandomizer {
         }
     }
 }
+
