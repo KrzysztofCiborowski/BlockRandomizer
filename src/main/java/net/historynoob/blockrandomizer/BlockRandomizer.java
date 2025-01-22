@@ -1,3 +1,7 @@
+/**
+ * To do:
+ * - Fix the holding the right click button
+*/
 package net.historynoob.blockrandomizer;
 
 import net.minecraft.client.Minecraft;
@@ -7,15 +11,14 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RayTraceResult;
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.lwjgl.input.Keyboard;
@@ -23,7 +26,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraft.util.text.TextComponentString;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -32,7 +34,6 @@ import java.util.Random;
 @Mod(modid = BlockRandomizer.MODID, name = BlockRandomizer.NAME, version = BlockRandomizer.VERSION)
 @SideOnly(Side.CLIENT)
 public class BlockRandomizer {
-
     public static final String MODID = "blockrandomizer";
     public static final String NAME = "Block Randomizer";
     public static final String VERSION = "0.0.6";
@@ -41,6 +42,7 @@ public class BlockRandomizer {
     private static boolean randomizerEnabled = false;
     private static final Random random = new Random();
     private static Robot robot;
+    public static boolean debugEnabled = false;
 
     static {
         try {
@@ -54,6 +56,7 @@ public class BlockRandomizer {
     public void preInit(FMLPreInitializationEvent event) {
         // Register this class for event handling
         MinecraftForge.EVENT_BUS.register(this);
+        ClientCommandHandler.instance.registerCommand(new DebugClientCommand());
         System.out.println("BlockRandomizer: Pre-initialization complete.");
     }
 
@@ -80,60 +83,30 @@ public class BlockRandomizer {
             }
         }
     }
-/*
-    @SubscribeEvent
-    public void onBlockPlace(PlayerInteractEvent.RightClickBlock event) {
-        EntityPlayer player = event.getEntityPlayer();
-        if (player == null) return;
 
-        // Send a debug message to the player
-        player.sendMessage(new TextComponentString("onBlockPlace event triggered"));
-
-        // Check if running on the client side
-        if (!event.getWorld().isRemote) {
-            player.sendMessage(new TextComponentString("onBlockPlace is running on the server side"));
-            return;
-        }
-        player.sendMessage(new TextComponentString("onBlockPlace is running on the client side"));
-
-        // Retrieve placeable slots
-        List<Integer> placeableSlots = getPlaceableSlots(player);
-        if (!placeableSlots.isEmpty()) {
-            int randomSlot = placeableSlots.get(random.nextInt(placeableSlots.size()));
-            player.inventory.currentItem = randomSlot;
-
-            // Notify the player about the selected random slot
-            player.sendMessage(new TextComponentString("Random slot selected: " + randomSlot));
-
-            // Simulate keypress for the random slot
-            simulateKeyPress(randomSlot);
-        } else {
-            player.sendMessage(new TextComponentString("No placeable slots found."));
-        }
-    }
-*/
     @SubscribeEvent
     public void onBlockPlace(MouseEvent event) {
 
         Minecraft mc = Minecraft.getMinecraft();
-        if (randomizerEnabled && mc.player != null && event.getButton() == 1 && !event.isButtonstate()) {
-            EntityPlayer player = mc.player;
-            RayTraceResult result = mc.objectMouseOver;
+        ItemStack stack = mc.player.inventory.getStackInSlot(mc.player.inventory.currentItem);
+        EntityPlayer player = mc.player;
+        RayTraceResult result = mc.objectMouseOver;
 
+        if (randomizerEnabled && mc.player != null && event.getButton() == 1 && !event.isButtonstate() && stack.getItem() instanceof ItemBlock) {
             if (result != null && result.typeOfHit == RayTraceResult.Type.BLOCK) {
                 List<Integer> placeableSlots = getPlaceableSlots(player);
                 if (!placeableSlots.isEmpty()) {
                     int randomSlot = placeableSlots.get(random.nextInt(placeableSlots.size()));
                     player.inventory.currentItem = randomSlot;
 
-                    // Notify the player about the selected random slot
-                    player.sendMessage(new TextComponentString("Random slot selected: " + randomSlot));
-
-                    // Simulate keypress for the random slot
+                    if (debugEnabled) {
+                        showDebug("Random slot selected: " + randomSlot);
+                    }
                     simulateKeyPress(randomSlot);
+                }
             }
         }
-    }}
+    }
 
     public List<Integer> getPlaceableSlots(EntityPlayer player) {
         List<Integer> slots = new ArrayList<>();
@@ -147,11 +120,9 @@ public class BlockRandomizer {
                 }
             }
         }
-        EntityPlayer playerdebug = Minecraft.getMinecraft().player;
-        if (playerdebug != null) {
-            playerdebug.sendMessage(new TextComponentString(
-                    "Block Randomizer DEBUG: " + slots
-            ));
+        if (debugEnabled) {
+            showDebug("Block Randomizer DEBUG: " + slots);
+
         }
 
         return slots;
@@ -164,15 +135,25 @@ public class BlockRandomizer {
         try {
             robot.keyPress(hexKeyCode);
             robot.keyRelease(hexKeyCode);
-            EntityPlayer playerdebug = Minecraft.getMinecraft().player;
-            if (playerdebug != null) {
-                playerdebug.sendMessage(new TextComponentString(
-                        "Block Randomizer DEBUG: " + hexKeyCode + "pressed"
-                ));
+
+            if (debugEnabled) {
+                showDebug("Block Randomizer DEBUG: " + hexKeyCode + " pressed");
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void changeDebugState() {
+        debugEnabled = !debugEnabled;
+        Minecraft mc = Minecraft.getMinecraft();
+        EntityPlayer player = mc.player;
+        player.sendMessage(new TextComponentString("Block Randomizer Debug: " + (debugEnabled ? "Enabled" : "Disabled")));
+    }
+
+    private void showDebug(String message) {
+        EntityPlayer player = Minecraft.getMinecraft().player;
+        player.sendMessage(new TextComponentString(message));
     }
 }
 
